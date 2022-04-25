@@ -1,0 +1,5 @@
+package com.xworkz.demo.entity;
+
+public class Restaurant {
+
+}

@@ -1,0 +1,9 @@
+package com.xworkz.demo.entity;
+
+public class Restaurant {
+	private int restaurantId;
+	private long restaurantNUM;
+	private String restaurantName;
+	private double restaurantRating;
+	private String restaurantType;
+}
