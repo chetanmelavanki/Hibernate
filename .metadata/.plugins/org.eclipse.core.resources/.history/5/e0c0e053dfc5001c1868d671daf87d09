@@ -1,0 +1,16 @@
+package com.xworkz.hibernatedemo.jpa;
+
+public class RestaurantJPADAO {
+	EntityManagerFactory emfactory = Persistence.createEntityManagerFactory( "JPA" );
+    
+	 EntityManager entitymanager = emfactory.createEntityManager( );
+     entitymanager.getTransaction( ).begin( );
+     
+     entitymanager.persist(entity);
+     entitymanager.getTransaction( ).commit( );
+
+     entitymanager.close( );
+     emfactory.close( );
+
+}
+}
