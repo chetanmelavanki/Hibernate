@@ -19,7 +19,6 @@
 				value="com.mysql.cj.jdbc.Driver" />
 
 			<property name="hibernate.show_sql" value="true" />
-			<property name="hibernate.tv_channel.auto" value="create" />
 		</properties>
 
 	</persistence-unit>

@@ -48,6 +48,7 @@
 		<list key="name">
 		</list>
 		<list key="artifactId">
+			<item value="tv-channel-app"/>
 			<item value="hibernate-demo"/>
 		</list>
 		<list key="projectNameTemplate">

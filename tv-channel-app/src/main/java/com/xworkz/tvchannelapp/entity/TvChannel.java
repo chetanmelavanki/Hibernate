@@ -21,4 +21,6 @@ public class TvChannel {
 	private double price;
 	@Column(name="is_free")
 	private boolean isFree;
+	
+	
 }

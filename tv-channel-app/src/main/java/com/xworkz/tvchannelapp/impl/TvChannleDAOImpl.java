@@ -31,4 +31,30 @@ public class TvChannleDAOImpl implements TvChannelDAO {
 		}
 	}
 
+	@Override
+	public void getChannel() {
+		EntityManagerFactory entityManagerFactory = null;
+		EntityManager entityManager = null;
+		EntityTransaction entityTransaction = null;	
+		try {
+			entityManagerFactory = Persistence.createEntityManagerFactory("tv");
+			entityManager = entityManagerFactory.createEntityManager();
+			entityTransaction = entityManager.getTransaction();
+			entityTransaction.begin();
+			TvChannel channel=entityManager.find(TvChannel.class, 2);
+			System.out.println("channel_id="+channel.getChannelId());
+			System.out.println("channel_name="+channel.getChannelName());
+			System.out.println("language="+channel.getLanguage());
+			System.out.println("cost="+channel.getPrice());
+
+			entityTransaction.commit();
+		} catch (Exception e) {
+			entityTransaction.rollback();
+			e.printStackTrace();
+		} finally {
+			if (entityManager != null)
+				entityManager.close();
+		}
+	}
+
 }

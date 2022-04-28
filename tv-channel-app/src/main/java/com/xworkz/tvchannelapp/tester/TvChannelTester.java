@@ -14,7 +14,9 @@ public class TvChannelTester {
 		channel.setFree(true);
 		
 		TvChannelDAO channelDAO= new TvChannleDAOImpl();
-		channelDAO.saveChannel(channel);
-		System.out.println("saved successfully");
+//		channelDAO.saveChannel(channel);
+//		System.out.println("saved successfully");
+		channelDAO.getChannel();
+		System.out.println("reading data");
 	}
 }
