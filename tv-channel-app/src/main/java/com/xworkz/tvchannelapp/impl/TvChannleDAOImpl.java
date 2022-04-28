@@ -42,11 +42,11 @@ public class TvChannleDAOImpl implements TvChannelDAO {
 			entityTransaction = entityManager.getTransaction();
 			entityTransaction.begin();
 			TvChannel channel=entityManager.find(TvChannel.class, 2);
-			System.out.println("channel_id="+channel.getChannelId());
-			System.out.println("channel_name="+channel.getChannelName());
-			System.out.println("language="+channel.getLanguage());
-			System.out.println("cost="+channel.getPrice());
-
+//			System.out.println("channel_id="+channel.getChannelId());
+//			System.out.println("channel_name="+channel.getChannelName());
+//			System.out.println("language="+channel.getLanguage());
+//			System.out.println("cost="+channel.getPrice());
+			System.out.println(channel.toString());
 			entityTransaction.commit();
 		} catch (Exception e) {
 			entityTransaction.rollback();

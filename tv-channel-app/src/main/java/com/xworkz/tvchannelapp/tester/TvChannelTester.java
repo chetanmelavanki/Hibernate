@@ -17,6 +17,6 @@ public class TvChannelTester {
 //		channelDAO.saveChannel(channel);
 //		System.out.println("saved successfully");
 		channelDAO.getChannel();
-		System.out.println("reading data");
+		System.out.println("successfully fetched data");
 	}
 }
