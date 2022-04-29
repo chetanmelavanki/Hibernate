@@ -1,0 +1,218 @@
+function OtClient (otExtractFunction, composer, transformer, sender, docWriter, appState) {
+    var that = {
+        // public variables
+        inFlight: null,
+        buffer: null,
+        bridge: null
+    };
+
+    that.reset = function (newText, cuid, lastOpIdFromServer) {
+        that.inFlight = null;
+        that.buffer = null;
+        that.bridge = null;
+        that.previousText = newText;
+        that.cuid = cuid;
+        that.lastOpIdFromServer = lastOpIdFromServer;
+        appState.log("OtClient reset");
+    }
+
+    that._extractOp = function(newText) {
+        var op = otExtractFunction(that.previousText, newText);
+        appState.log("Extracted op from client changes: " + op.toString());
+        op.cuid = that.cuid;
+        op.parent_id = that.lastOpIdFromServer;
+        return op;
+    };
+
+    that._doCompose = function(op) {
+        var f = function(baseOp, newOp) {
+            if(baseOp == null) return newOp;
+            return composer.compose(baseOp, newOp);
+        };
+
+        that.buffer = f(that.buffer, op);
+        that.bridge = f(that.bridge, op);
+    };
+
+    that._shouldSendToServer = function(op) {
+        return that.inFlight == null && that.buffer != null;
+    };
+
+    that._sendToServer = function(op) {
+        that.inFlight = that.buffer;
+        that.buffer = null;
+        sender.send(that.inFlight);
+        resetTimer();
+    };
+
+    that.handleLocalTextChange = function(newText) {
+        if (newText == that.previousText) return;
+
+        var op = that._extractOp(newText);
+        that._doCompose(op);
+        that.previousText = newText;
+        if(that._shouldSendToServer())
+            that._sendToServer();
+    };
+
+    // returns the op that should be applied to the doc, or null if none
+    that._doTransform = function(op) {
+        if(op.cuid == that.cuid) {
+            that.inFlight = null;
+            that.bridge = that.buffer;
+            if(that.buffer != null)
+                that.buffer.parent_id = op.id;
+            return null;
+        } else if(that.bridge == null) {
+            return op;
+        } else {
+            var res1 = transformer.transform(op, that.bridge);
+            var tf_op = res1[0];
+            that.bridge = res1[1];
+
+            var res2 = transformer.transform(op, that.inFlight);
+            var tf_op2 = res2[0];
+            that.inFlight = res2[1];
+
+            if(that.buffer != null) {
+                var res3 = transformer.transform(tf_op2, that.buffer);
+                var tf_op3 = res3[0];
+                that.buffer = res3[1];
+                that.buffer.parent_id = op.id;
+            }
+            return tf_op;
+        }
+    };
+
+    that._applyOpToDoc = function(op) {
+        var newText = op.apply(that.previousText);
+        that.previousText = newText;
+        docWriter.write(newText, op);
+    };
+
+    that.handleOpFromServer = function(op) {
+        appState.log("got op from server: " + op.toString());
+        that.lastOpIdFromServer = op.id;
+        var opToApply = that._doTransform(op);
+        if(opToApply != null) {
+            opToApply.compress();
+            appState.log("Transformed it to: " + opToApply.toString());
+            that._applyOpToDoc(opToApply);
+        }
+        if(that._shouldSendToServer())
+            that._sendToServer();
+        resetTimer();
+    };
+
+    var lastAction = null;
+    
+    that.isStalled = function() {
+        if (lastAction == null)
+            return false;
+
+        if(that.inFlight == null && that.buffer == null && that.bridge == null) {
+            lastAction = null;
+            return false;
+        }
+
+        var elapsed = new Date().getTime() - lastAction;
+        return elapsed > 20000;
+    };
+
+    function resetTimer() {
+        lastAction = new Date();
+    };
+
+    return that;
+}
+
+var ajaxSender = {
+    send: function(op, count) {
+        op.compress();
+
+        if (!count) count = 0;
+        appState.log("sending up: " + op.toString());
+
+        var errHandler = function(jqXHR, textStatus, errorThrown) {
+            var status = "";
+            if (jqXHR && jqXHR["status"])
+                status = jqXHR["status"];
+
+            if (count < 3 && status != 500) {
+                appState.log("got an error, trying again");
+                ajaxSender.send(op, count + 1);
+                return;
+            }
+            var msg = "Error when attempting to post change from client to server: ";
+            /*if(jqXHR) {
+                for(var i in jqXHR) {
+                    msg += "-=-" + i + ": " + jqXHR[i];
+                }
+            }*/
+            if(jqXHR && jqXHR["readyState"])
+                msg += "-=- readyState: " + jqXHR["readyState"];
+            if(jqXHR && jqXHR["status"])
+                msg += "-=- status: " + jqXHR["status"];
+            if(jqXHR && jqXHR["statusText"])
+                msg += "-=- statusText: " + jqXHR["statusText"];
+            if(textStatus)
+                msg += "-=- textStatus: " + textStatus;
+            if(errorThrown)
+                msg += "-=- errorThrown: " + errorThrown;
+    
+            logErrorAndRefresh(msg);
+        };
+
+        var startingTime = new Date();
+
+        $.ajax({
+            type: "POST",
+            url: "/ot/post",
+            data: {op: op.toString(), parent_id: op.parent_id}, 
+            success: function(data, textStatus, jqXHR) {
+                var endingTime = new Date();
+                var millis = endingTime.getTime() - startingTime.getTime();
+                
+                logTime(millis);
+
+                if(data && data.ok == "OK")
+                    return;
+                errHandler(jqXHR, "error in success handler", "successError");
+            },
+            error: errHandler,
+            dataType: "json"
+        });
+        appState.log("done sending");
+    }
+};
+
+function logTime(millis) {
+    if (Math.random() < .995) return;
+    $.ajax({
+        type: "POST",
+        url: "/ot/logtime",
+        data: {millis:millis}
+    });
+}
+
+var editAreaDocWriter = {
+    write: function(newText, op) {
+        var ea = window.frames["frame_the_input"].editArea;
+        var ta = $(input_frame.getElementById("textarea"));
+
+        var sel = $(input_frame.getElementById("textarea")).getSelection();
+
+        sel.start = op.adjustSelectedIndex(sel.start);
+        sel.end = op.adjustSelectedIndex(sel.end);
+        
+        ta.val(newText);
+
+        // refresh highlight
+        $(input_frame.getElementById("textarea")).setSelection(sel.start, sel.end);
+        ea.focus();
+        ea.check_line_selection(false);
+    }
+};
+
+var otClient = new OtClient(extractOperation, Composer(), Transformer(), ajaxSender, editAreaDocWriter, appState);
+appState.log("initialized OtClient");

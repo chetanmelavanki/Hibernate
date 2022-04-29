@@ -1,0 +1,145 @@
+/*
+Initialization stuff, setting up handlers etc.
+*/
+
+$(document).ready(function() {
+    setup_langs();
+    setup_invite();
+    init_chat();
+    init_edit_area();
+    $(window).bind('resize', do_resize);
+    if(!sidebar_visible)
+        hide_sidebar();
+    $(window).unload(unloadPage);
+    $(window).bind('beforeunload', function(){leaving = true;});
+    $("#docnamespan").click(changeDocName);
+    monitorStalledOt();
+    display_run_code_dialog();
+});
+
+function init_edit_area() {
+    editAreaLoader.init({
+        id: "the_input",
+        start_highlight: false,
+        allow_resize: "no",
+        allow_toggle: false,
+        language: "en",
+        syntax: "python",
+        toolbar: "",
+        word_wrap: true,
+        is_editable: doc_initialized,
+        replace_tab_by_spaces: 4,
+        min_height: get_edit_height(),
+        min_width: get_edit_width(),
+        EA_load_callback: "init_edit_area2"
+    });
+
+    do_resize();
+
+    // some browsers doesn't fully load the images until after
+    // $.ready is called, this fixes the size
+    setTimeout("do_resize()", 10);
+    setTimeout("do_resize()", 100);
+    setTimeout("do_resize()", 250);
+    setTimeout("do_resize()", 500);
+    setTimeout("do_resize()", 1000);
+}
+
+function init_edit_area2() {
+
+    if($.browser.msie || $.browser.opera)
+        input_frame = $("#frame_the_input").prop("contentWindow").document;
+    else
+        input_frame = $("#frame_the_input").prop("contentDocument");
+
+    if(!doc_initialized) {
+        doUpdate(true);        
+    }
+
+    setupChangeHandlers();
+}
+
+function setup_langs() {
+        var s = "";
+        var selectHtml = "";
+        for(key in langs) {
+            s += "<li><a href='#' onclick=\"post_lang('" + key + "');return false\">" + langs[key] + "</a></li>\n";
+            selectHtml += "<option value='" + key + "'>" + langs[key] + "</option>";
+        }
+        $("#lang_menu_ul").html(s);
+        $("#langSelect").html(selectHtml);
+        $("#langSelect").change(function() {post_lang($(this).val());});
+}
+
+function getParameterByName( name )
+{
+    name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+    var regexS = "[\\?&]"+name+"=([^&#]*)";
+    var regex = new RegExp( regexS );
+    var results = regex.exec( window.location.href );
+    if(results == null)
+        return "";
+    else
+        return decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+function init_chat() {
+    $("#chat_form").submit(submit_chat);
+    $("#chat_value").focus(gain_focus);
+    $("#chat_value").blur(clear_focus);
+    $("#hide_sb_button").click(toggle_sidebar);
+    $("#show_sb_button").click(toggle_sidebar);
+    $("#reconnect").click(reconnect);
+
+    var nickParam = getParameterByName("nickname");
+    if (nickParam) {
+        nickname = nickParam; 
+        change_nick(nickname);
+    }
+
+    if (nickname === "unknown") {
+        nickname = prompt("Enter Your Name");
+        change_nick(nickname);
+    }
+}
+
+function setup_invite() {
+    $("#invite").click(function() {
+    var msg = 'Share this url. When other people open it, you will be able to work together on this document.<br><br>'
+        + '<input id="invite_url" style="width: 315px" type="text" readonly="readonly"'
+        + ' value=' + document.location +'>';
+        show_dialog(msg);
+        $("#invite_url").select();
+        return false;
+    });
+}
+
+function display_run_code_dialog() {
+    $("#run-code").click(function() {
+    var msg = 'Collabedit only lets you write code and does not offer runtime execution. The good news is that our parent company <a href="https://codeanywhere.com?utm_source=collabedit&utm_medium=collabedit-web&utm_campaign=collabedit-redirect" target="_blank">Codeanywhere</a> offers a fully featured collaborative code editor that lets you run the code together as well.<br><br>'
+        + '<a id="try-now" style="background-color: #3CA0D0; color: white; border: 2px solid #3CA0D0; outline: none; text-decoration: none; padding: 2px 4px;" href="https://codeanywhere.com/signup?utm_source=collabedit&utm_medium=collabedit-web&utm_campaign=collabedit-redirect" target="_blank">Try it now</a>';
+        show_dialog(msg);
+        return false;
+    });
+}
+
+function unloadPage() {
+    $.ajax({
+        type: "POST",
+        async: false,
+        url: "/exit",
+        data: {cuid: cuid}, 
+        dataType: "json"
+        });
+}
+
+function gain_focus() {
+    focused_id = $(this).prop("id");
+    if(focused_id == "chat_value" && chat_cursor > 0)
+        $("#" + focused_id).caret({start: chat_cursor, end: chat_cursor});
+}
+
+function clear_focus() {
+    if(!stolen_focus)
+        focused_id = null;
+}

@@ -9,14 +9,13 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.Persistence;
 
 public class TvChannleDAOImpl implements TvChannelDAO {
+	private EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory("tv");
 
 	@Override
 	public void saveChannel(TvChannel channel) {
-		EntityManagerFactory entityManagerFactory = null;
 		EntityManager entityManager = null;
 		EntityTransaction entityTransaction = null;
 		try {
-			entityManagerFactory = Persistence.createEntityManagerFactory("tv");
 			entityManager = entityManagerFactory.createEntityManager();
 			entityTransaction = entityManager.getTransaction();
 			entityTransaction.begin();
@@ -32,24 +31,39 @@ public class TvChannleDAOImpl implements TvChannelDAO {
 	}
 
 	@Override
-	public void getChannel() {
-		EntityManagerFactory entityManagerFactory = null;
+	public TvChannel getChannelById(int channelId) {
 		EntityManager entityManager = null;
-		EntityTransaction entityTransaction = null;	
+		TvChannel channel2 = null;
 		try {
-			entityManagerFactory = Persistence.createEntityManagerFactory("tv");
 			entityManager = entityManagerFactory.createEntityManager();
-			entityTransaction = entityManager.getTransaction();
-			entityTransaction.begin();
-			TvChannel channel=entityManager.find(TvChannel.class, 2);
-//			System.out.println("channel_id="+channel.getChannelId());
-//			System.out.println("channel_name="+channel.getChannelName());
-//			System.out.println("language="+channel.getLanguage());
-//			System.out.println("cost="+channel.getPrice());
-			System.out.println(channel.toString());
-			entityTransaction.commit();
+			channel2 = entityManager.find(TvChannel.class, channelId);
 		} catch (Exception e) {
-			entityTransaction.rollback();
+			e.printStackTrace();
+		} finally {
+			if (entityManager != null)
+				entityManager.close();
+		}
+		return channel2;
+
+	}
+
+	@Override
+	public void updateChannelPriceById(int channelId, double price) {
+		EntityManager entityManager = null;
+		TvChannel channel2 = null;
+		EntityTransaction entityTransaction = null;
+		try {
+			entityManager = entityManagerFactory.createEntityManager();
+			channel2 = entityManager.find(TvChannel.class, channelId);
+			if (channel2 != null) {
+				entityTransaction = entityManager.getTransaction();
+				entityTransaction.begin();
+				channel2.setPrice(price);
+				entityManager.merge(channel2);
+				entityTransaction.commit();
+				System.out.println("updated..");
+			}
+		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			if (entityManager != null)

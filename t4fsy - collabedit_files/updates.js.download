@@ -1,0 +1,176 @@
+var message_types = {CHAT:1, LANG_CHANGE:2, INTERVIEW_RELOAD: 3, INTERVIEW_QUESTION_CHANGE: 4, DOC_NAME_CHANGE: 5};
+
+function doUpdate(resync) {
+    $.ajax({
+        type: "POST",
+        url: "/ot/wait",
+        data: {guid: guid, cuid: cuid, resync: resync}, 
+        success: updateSuccess,
+        error: updateFail,
+        dataType: "json"
+        });
+}
+
+function doMessages(messages) {
+    for(var i=0;i<messages.length;i++) {
+        var msg = messages[i];
+        if(msg.type == message_types.INTERVIEW_RELOAD || msg.type == message_types.INTERVIEW_QUESTION_CHANGE)
+            continue;
+
+        var clazz = (msg.type == message_types.LANG_CHANGE || msg.type == message_types.DOC_NAME_CHANGE) ? "italicchat" : "normalchat";
+        displayChatMessage(msg.nickname, msg.message_text, clazz);
+        if (!sidebar_visible && initialUpdateDone)
+            displayChatMessagePopup(msg.nickname, msg.message_text, clazz);
+    }
+}
+
+function displayChatMessagePopup(nick, text, clazz) {
+    var s = nick + ": " + text;
+    var superDiv = $("<div><strong>chat</strong><br><br>" + s + "</div>");
+    superDiv.css("background-color", "#E1F2F9");
+    superDiv.css("position", "absolute");
+    superDiv.css("bottom", "115px");
+    superDiv.css("right", "70px");
+    superDiv.css("height", "140px");
+    superDiv.css("width", "220px");
+    superDiv.css("padding", "10px");
+    superDiv.css("border", "solid 1px black");
+    
+    superDiv.appendTo($("body"));
+
+    setTimeout(function() {superDiv.remove()}, 2000);
+}
+
+/* Will refresh page if there's a reload event. We need to return true so we can short circuit the doUpdate function. */
+function doInterviewReload(messages) {
+    for(var i=0;i<messages.length;i++) {
+        var msg = messages[i];
+        if(msg.type == message_types.INTERVIEW_RELOAD)
+        {
+            transitionPage();
+            return true;
+        }
+    }
+    return false;
+}
+
+function doInterviewQuestionChange(messages) {
+    for(var i=0;i<messages.length;i++) {
+        var msg = messages[i];
+        if(msg.type != message_types.INTERVIEW_QUESTION_CHANGE)
+            continue;
+
+        if (isNoQuestionYet) {
+            window.location.reload();
+            return true;
+        }
+        showAlert("Next Question");
+        doUpdate(true);
+        setTimeout("hideAlert()", 2000);
+        loadInterviewInfo();
+        return true;
+    }
+    return false;
+}
+
+function do_user_list(user_list) {
+    var list = "";
+    var first = true;
+    for(i in user_list) {
+        var user = user_list[i];
+        if(!first) list += ", ";
+        list += user;
+        first = false;
+    }
+    $("#collaborators_div").html(list);
+    $("#collaborators_div").attr("title", "also viewing this document: "+ list);
+}
+
+function updateFail(transport) {
+    show_connection_error();
+}
+
+var initialUpdateDone = false;
+function updateSuccess(data, textStatus, request) {
+    if(data == null) {
+        setTimeout("show_connection_error()", 100);
+        return;
+    }
+    try {
+
+    if (data.version) {
+        if (version != null && version != data.version) {
+            alert("A newer version of collabedit (" + data.version + ") has been released. This page is going to refresh now.");
+            window.location.reload();
+        }
+        version = data.version;
+    }
+
+    if(data.messages) {
+        doMessages(data.messages);
+
+        if(doInterviewReload(data.messages))
+            return;
+
+        if(doInterviewQuestionChange(data.messages))
+            return;
+    }
+
+    if(sidebar_visible) {
+        if($("#chat_value").caret().start > -1)
+            chat_cursor = $("#chat_value").caret().start;
+    }
+
+    if(data.lang) {
+        stolen_focus = true;
+        change_lang(data.lang);
+        stolen_focus = false;
+    }
+
+    if(data.name) {
+        $("#docnamespan").text(data.name);
+        document.title = data.name + " - collabedit";
+        docName = data.name;
+    }
+
+    if(data.user_list)
+        do_user_list(data.user_list);
+
+    if(data.op) {
+        var op = parseOperation(data.op);
+        stolen_focus = true;
+        otClient.handleOpFromServer(op);
+        stolen_focus = false;
+        setTimeout('$("#' + focused_id + '").focus()', 200);
+    }
+
+    if(data.new_cuid) {
+        cuid = data.new_cuid;
+        doUpdate(true);
+        return;
+    }
+
+    if(data.full_text != undefined) {
+        stolen_focus = true;
+        editAreaLoader.setValue("the_input", data.full_text);
+        otClient.reset(data.full_text, cuid, data.parent_op_id);
+        stolen_focus = false;
+        setTimeout('$("#' + focused_id + '").focus()', 200);
+        if (!connected)
+            hide_connection_error();
+    }
+
+    // don't enable editing until we've synced up with the server
+    if(!doc_initialized) {
+        doc_initialized = true;
+        editAreaLoader.execCommand("the_input", "set_editable", true);
+    }
+    } catch (ex) {
+        var errStr = ex.toString();
+        logErrorAndRefresh(errStr);
+		return;
+    }
+
+    setTimeout(function() {doUpdate(false);}, 10);
+    initialUpdateDone = true;
+}

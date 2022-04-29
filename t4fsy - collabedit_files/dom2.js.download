@@ -1,0 +1,147 @@
+/*
+This file is for code that manipulates the DOM.
+*/
+
+function show_connection_error() {
+    if (leaving) return;
+    connected = false;
+    appState.log("Connection error, showing connection error");
+    $("#conn_error").css("display", "block");
+    do_resize();
+    editAreaLoader.execCommand("the_input", "set_editable", false);
+}
+
+function showAlert(message) {
+    $("#alert_bar").css("display", "block");
+    do_resize();
+    $("#alert_bar").html(message);
+}
+
+function hideAlert() {
+    $("#alert_bar").css("display", "none");
+    do_resize();
+}
+
+function hide_connection_error() {
+    connected = true;
+    $("#conn_error").css("display", "none");
+    do_resize();
+    editAreaLoader.execCommand("the_input", "set_editable", true);
+    appState.log("Connection Reset button pushed. Re-enabling editor.");
+}
+
+function do_resize() {
+    $("#frame_the_input").css("width", get_edit_width() + "px");
+    var editorHeight = get_edit_height();
+    $("#frame_the_input").css("height", editorHeight + "px");
+
+    var heightBefore = $("#sidebar_div").height();
+    var delta = editorHeight - heightBefore;
+    var messageDivHeightBefore = $("#message_div").height();
+    var messageDivFinalHeight = messageDivHeightBefore + delta;
+    $("#message_div").css("height", messageDivFinalHeight + "px");
+}
+
+function hide_sidebar() {
+    $("#sidebar_div").css("display", "none");
+    $("#hide_sb_button").css("display", "none");
+    $("#show_sb_button").css("display", "block");
+}
+
+function show_sidebar() {
+    $("#sidebar_div").css("display", "block");
+    $("#hide_sb_button").css("display", "block");
+    $("#show_sb_button").css("display", "none");
+}
+
+function get_edit_width() {
+    var w;
+    if(self.innerWidth)
+        w = self.innerWidth;
+    else if(document.documentElement && document.documentElement.clientWidth)
+        w = document.documentElement.clientWidth;
+    else if(document.body)
+        w = document.body.clientWidth;
+    w -= 80;
+    if(sidebar_visible)
+        return w - 260;
+    else
+        return w;
+}
+
+function get_edit_height() {
+    var h;
+    if(self.innerWidth)
+        h = self.innerHeight;
+    else if(document.documentElement && document.documentElement.clientWidth)
+        h = document.documentElement.clientHeight;
+    else if(document.body)
+        h = document.body.clientHeight;
+
+    var offset = $("#edit_area_text_div").offset()["top"];
+    h = h - offset;
+
+    h -= 60;
+    return h - 20; // space at the bottom
+}
+
+function toggle_sidebar() {
+    if(sidebar_visible) 
+        hide_sidebar();
+    else
+        show_sidebar();
+
+    sidebar_visible = !sidebar_visible;
+    do_resize();
+    refreshSyntax();
+    update_chat_pref();
+    
+    return false;
+}
+
+function refreshSyntax() {
+    var was_off = editAreaLoader.execCommand('the_input', 'change_highlight', false);
+    if(typeof was_off != "undefined") was_off = true;
+    if (!was_off)
+        editAreaLoader.execCommand('the_input', 'change_highlight', true);
+}
+
+function change_lang(lang, force) {
+    $("#langSelect option").each(function(idx, val) {
+        if($(val).val() == lang)
+            $(val).prop("selected", true);
+    });
+
+    if(lang == "none") {
+        editAreaLoader.execCommand('the_input', 'change_highlight', false);
+    } else {
+        editAreaLoader.execCommand('the_input', 'change_highlight', true);
+        editAreaLoader.execCommand('the_input', 'change_syntax', lang);
+    }
+}
+
+function transitionPage() {
+    if (isInterviewer) {
+        window.location.reload();
+        return;
+    }
+
+    $("body").css("display", "none");
+    alert("The host has ended this interview");
+    window.location = "/";
+}
+
+function displayChatMessage(nickname, message_text, clazz) {
+    var after = $("#message_div").html();
+    after = after + "<div class='chtmsg'>"
+        + "<span class='nickspan'>" + nickname + ": </span>"
+        + "<span class='" + clazz + "'>"
+        + message_text
+        + "</span>"
+        + "</div>";
+    $("#message_div").html(after);
+
+    //scroll to the bottom whenever a new message arrives
+    var height = $("#message_div").prop("scrollHeight"); 
+    $("#message_div").prop("scrollTop", height);
+}

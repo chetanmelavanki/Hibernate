@@ -1,0 +1,473 @@
+var ot = {};
+ot.R = 7;
+ot.W = 8;
+ot.D = 9;
+
+function Operation (ops, cuid, id, parent_id) {
+    var that = {
+        ops: ops,
+        cuid: cuid,
+        id: id,
+        parent_id: parent_id
+    };
+
+    that.equals = function(other) {
+        if (other == null) return false;
+        if (that.cuid !== other.cuid) return false;
+        if (that.parent_id !== other.parent_id) return false;
+        if (that.size() !== other.size()) return false;
+        
+        var size = that.size();
+        for(var i=0;i < size;i++) {
+            var myOp = that.index(i);
+            var typ = myOp[0];
+            var arg = myOp[1];
+            var oOp = other.index(i);
+            var typO = oOp[0];
+            var argO = oOp[1];
+            if (typ !== typO || arg !== argO)
+                return false;
+        }
+        return true;
+    };
+
+    that.size = function() {
+        var len = 0;
+        for(var i=0;i < that.ops.length;i++) {
+            var typ = that.ops[i][0];
+            var arg = that.ops[i][1];
+            if(typ === ot.W || typ === ot.D)
+                len += arg.length;
+            else
+                len += arg;
+        }
+        return len;
+    };
+
+    that.index = function(idx) {
+        var curIdx = 0;
+        for(var i=0;i < that.ops.length;i++) {
+            var typ = that.ops[i][0];
+            var arg = that.ops[i][1];
+            var cur = null;
+            if (typ === ot.W || typ === ot.D)
+                cur = arg.length;
+            else
+                cur = arg;
+
+            if ((curIdx + cur) > idx) {
+                if (typ === ot.W || typ === ot.D)
+                    return [typ, arg.charAt(idx - curIdx)];
+                else
+                    return [typ, 1];
+            }
+            else
+                curIdx += cur;
+        }
+        throw ("index out of range");
+    };
+
+    that.normalizedOps = function() {
+        var res = [];
+        var resIdx = 0;
+        for(var i=0;i<that.ops.length;i++) {
+            var curOp = that.ops[i];
+            var curTyp = curOp[0];
+            var curVal = curOp[1];
+            var curLen = curVal;
+            if(curTyp != ot.R)
+                curLen = curVal.length;
+            for(var j=0;j<curLen;j++)
+            {
+                var thisVal = 1;
+                if(curTyp != ot.R)
+                    thisVal = curVal.charAt(j);
+
+                res[resIdx++] = [curTyp, thisVal];
+            }
+        }
+        return res;
+    };
+
+    that.docSizeBefore = function() {
+        var len = 0;
+        for(var i=0;i < that.ops.length;i++) {
+            var typ = that.ops[i][0];
+            var arg = that.ops[i][1];
+            if (typ === ot.R)
+                len += arg;
+            if (typ === ot.D)
+                len += arg.length;
+        }
+        return len;
+    };
+
+    that.docSizeAfter = function() {
+        var len = 0;
+        for(var i=0;i < that.ops.length;i++) {
+            var typ = that.ops[i][0];
+            var arg = that.ops[i][1];
+            if (typ === ot.R)
+                len += arg;
+            if (typ === ot.W)
+                len += arg.length;
+        }
+        return len;
+    };
+
+    that.rectify = function() {
+        var idx = 0;
+        var widx = null;
+        while(idx < that.ops.length) {
+            var op = that.ops[idx];
+
+            if (op[0] === ot.W && widx === null)
+                widx = idx;
+            else if (widx === null)
+                /* pass */ ;
+            else if (op[0] === ot.D) {
+                var temp = that.ops.splice(idx, 1)[0];
+                that.ops.splice(widx, 0, temp);
+                idx = widx;
+                widx = null;
+            }
+            else if (op[0] === ot.R)
+                widx = null;
+
+            idx += 1;
+        }
+    };
+
+    that.compress = function() {
+        var newOps = [];
+        var newOp = null;
+        for(var i=0;i < that.ops.length;i++) {
+            var next = that.ops[i];
+            if(newOp == null || newOp[0] != next[0]) {
+                newOp = [next[0], next[1]];
+                newOps.push(newOp);
+                continue;
+            }
+            newOp[1] += next[1];
+        }
+        that.ops = newOps;
+    };
+
+    that.toString = function() {
+        var res = '{"cuid":' + JSON.stringify(that.cuid)
+            + ',"parent_id":' + JSON.stringify(that.parent_id)
+            + ',"ops":' + JSON.stringify(that.ops)
+            + "}";
+
+        return res;
+    };
+
+    var OpDoc = function(str) {
+        var that = {};
+        that.orig = str;
+        that.dest = "";
+        that.origPtr = 0;
+
+        that.retain = function(n) {
+            if (n < 1 || that.origPtr + n > that.orig.length)
+                throw("invalid retain");
+            that.dest += that.orig.substr(that.origPtr, n);
+            that.origPtr += n;
+        };
+
+        that.write = function(chars) {
+            that.dest += chars;
+        }
+
+        that.deleet = function(chars) {
+            var temp = that.orig.substr(that.origPtr, chars.length);
+            if (chars !== temp || that.origPtr + chars.length > that.orig.length)
+                throw("invalid delete");
+            that.origPtr += chars.length;
+        }
+        return that;
+    };
+
+    that.apply = function(str) {
+
+        if (that.docSizeBefore() != str.length) {
+            var errStr = "incompatible operation for that document";
+            errStr += "\n\nop = " + that.toString();
+            errStr += "\n\ndoc = " + str;
+            throw(errStr);
+        }
+
+        var doc = OpDoc(str);
+
+        for(var i=0;i < that.ops.length;i++) {
+            var typ = that.ops[i][0];
+            var arg = that.ops[i][1];
+            if (typ === ot.W)
+                doc.write(arg);
+            else if (typ === ot.D)
+                doc.deleet(arg);
+            else if (typ === ot.R)
+                doc.retain(arg);
+        }
+        return doc.dest;
+    };
+
+    /*
+    Given the cursor index before this operation is applied, return a new cursor index that makes sense.
+    */
+    that.adjustSelectedIndex = function(idxBefore) {
+        var newIdx = idxBefore;
+        var writeBuffer = 0; // Ws don't move the cursor, unless they're followed by a R
+        var size = that.size();
+        for(var opI=0, cursI=0;cursI < idxBefore && opI < size;opI++) {
+            var curOp = that.index(opI);
+            var typ = curOp[0];
+            if (typ == ot.W)
+                writeBuffer++;
+            else if (typ == ot.R) {
+                cursI++;
+                newIdx += writeBuffer;
+                writeBuffer = 0;
+            }
+            else if (typ == ot.D) {
+                newIdx--;
+                cursI++;
+            }
+        }
+        if (newIdx < 0) newIdx = 0;
+        return newIdx;
+    };
+
+    // create a new Operation that is the reversal of this one
+    that.reverse = function() {
+        var newOps = [];
+        for(var i=0;i < that.ops.length;i++) {
+            var curOp = that.ops[i];
+            var typ = curOp[0];
+            var val = curOp[1];
+
+            if(typ == ot.R)
+                newOps[i] = curOp;
+            else if(typ == ot.W)
+                newOps[i] = [ot.D, val];
+            else if(typ == ot.D)
+                newOps[i] = [ot.W, val];
+        }
+
+        return Operation(newOps);
+    };
+
+    return that;
+}
+
+/**
+Given a before and after string, create an operation that will make the modification.
+*/
+function extractOperation(txtBefore, txtAfter) {
+    var si1 = 0, ei1 = txtBefore.length - 1, si2 = 0, ei2 = txtAfter.length - 1;
+    
+    while(txtBefore.charAt(si1) === txtAfter.charAt(si2) && si1 < txtBefore.length && si2 < txtAfter.length) {
+        si1++;
+        si2++;
+    }
+
+    while(txtBefore.charAt(ei1) === txtAfter.charAt(ei2) && ei1 >= si1 && ei2 >= si2) {
+        ei1--;
+        ei2--;
+    }
+
+    var bSnip = txtBefore.substr(si1, ei1 - si1 + 1);
+    var aSnip = txtAfter.substr(si2, ei2 - si2 + 1);
+
+    var results = [];
+    if (si1 > 0)
+        results.push([ot.R, si1]);
+    if (bSnip)
+        results.push([ot.D, bSnip]);
+    if (aSnip)
+        results.push([ot.W, aSnip]);
+    if (ei1 < txtBefore.length - 1)
+        results.push([ot.R, txtBefore.length - 1 - ei1]);
+
+    return Operation(results);
+}
+
+function parseOperation(txt) {
+    var obj = JSON.parse(txt);
+    return Operation(obj.ops, obj.cuid, obj.id);
+}
+
+function Composer() {
+    var that = {};
+
+    that.compose = function(op1, op2) {
+        if(op1.docSizeAfter() != op2.docSizeBefore())
+            throw ("incompatible operations for combination");
+        var result = [];
+
+        var i1 = 0, i2 = 0;
+        var size1 = op1.size(), size2 = op2.size();
+        var normOp1 = op1.normalizedOps();
+        var normOp2 = op2.normalizedOps();
+        while(i1 < size1 || i2 < size2) {
+            var c1 = null, c2 = null; 
+            if(i1 < size1) c1 = normOp1[i1];
+            if(i2 < size2) c2 = normOp2[i2];
+
+            if(c1 == null) {
+                result.push(c2);
+                i2 += 1;
+            }
+            else if(c2 == null) {
+                result.push(c1);
+                i1 += 1;
+            }
+            else if(c1[0] == ot.W && c2[0] == ot.W) {
+                result.push(c2);
+                i2 += 1;
+            }
+            else if(c1[0] == ot.W && c2[0] == ot.R) {
+                result.push(c1);
+                i1 += 1;
+                i2 += 1;
+            }
+            else if(c1[0] == ot.R && c2[0] == ot.W) {
+                result.push(c2);
+                i2 += 1;
+            }
+            else if(c1[0] == ot.R && c2[0] == ot.R) {
+                result.push(c1);
+                i1 += 1;
+                i2 += 1;
+            }
+            else if(c1[0] == ot.W && c2[0] == ot.D) {
+                i1 += 1;
+                i2 += 1;
+            }
+            else if(c1[0] == ot.D && c2[0] == ot.W) {
+                result.push(c1);
+                i1 += 1;
+            }
+            else if(c1[0] == ot.R && c2[0] == ot.D) {
+                result.push(c2);
+                i1 += 1;
+                i2 += 1;
+            }
+            else if(c1[0] == ot.D && c2[0] == ot.R) {
+                result.push(c1);
+                i1 += 1;
+            }
+            else if(c1[0] == ot.D && c2[0] == ot.D) {
+                result.push(c1);
+                i1 += 1;
+            }
+
+            else
+                throw("unhandled pair of Commands");
+        }
+
+        return Operation(result, op1.cuid, null, op1.parent_id);
+    };
+    return that;
+}
+
+function Transformer() {
+    var that = {};
+
+    that.transform = function(op1, op2) {
+        if(op1.docSizeBefore() != op2.docSizeBefore())
+            throw ("incompatible operations for transformation");
+
+        op1.rectify();
+        op2.rectify();
+        
+        var result1 = [];
+        var result2 = [];
+        var i1 = 0, i2 = 0;
+        var size1 = op1.size(), size2 = op2.size();
+        var normOp1 = op1.normalizedOps();
+        var normOp2 = op2.normalizedOps();
+        while(i1 < size1 || i2 < size2) {
+            var c1 = null, c2 = null;
+            if(i1 < size1) c1 = normOp1[i1];
+            if(i2 < size2) c2 = normOp2[i2];
+
+            if(c1 == null && c2[0] == ot.W) {
+                result1.push([ot.R, 1]);
+                result2.push(c2);
+                i2 += 1;
+            }
+
+            else if(c1[0] == ot.W && c2 == null) {
+                result1.push(c1);
+                result2.push([ot.R, 1]);
+                i1 += 1;
+            }
+
+            else if(c1[0] == ot.W && c2[0] == ot.W) {
+                result1.push(c1);
+                result2.push([ot.R, 1]);
+                i1 += 1;
+            }
+
+            else if(c1[0] == ot.R && c2[0] == ot.R) {
+                result1.push(c1);
+                result2.push(c2);
+                i1 += 1;
+                i2 += 1;
+            }
+
+            else if(c1[0] == ot.R && c2[0] == ot.W) {
+                result1.push(c1);
+                result2.push(c2);
+                i2 += 1;
+            }
+
+            else if(c1[0] == ot.W && c2[0] == ot.R) {
+                result1.push(c1);
+                result2.push(c2);
+                i1 += 1;
+            }
+
+            else if(c1[0] == ot.D && c2[0] == ot.D) {
+                i1 += 1;
+                i2 += 1;
+            }
+
+            else if(c1[0] == ot.D && c2[0] == ot.R) {
+                result1.push(c1);
+                i1 += 1;
+                i2 += 1;
+            }
+
+            else if(c1[0] == ot.R && c2[0] == ot.D) {
+                result2.push(c2);
+                i1 += 1;
+                i2 += 1;
+            }
+
+            else if(c1[0] == ot.W && c2[0] == ot.D) {
+                result1.push(c1);
+                result2.push([ot.R, 1]);
+                i1 += 1;
+            }
+
+            else if(c1[0] == ot.D && c2[0] == ot.W) {
+                result1.push([ot.R, 1]);
+                result2.push(c2);
+                i2 += 1;
+            }
+
+            else
+                throw("unhandled pair of Commands");
+        }
+
+        var t1 = Operation(result1, cuid=op1.cuid);
+        var t2 = Operation(result2, cuid=op2.cuid);
+        if(t1.docSizeAfter() != t2.docSizeAfter())
+            throw("bad transformation, document size doesn't match after");
+
+        return [t1, t2];
+    }
+    return that;
+}

@@ -1,0 +1,63 @@
+var adjustSelectionIndex;
+
+(function($) {
+
+function getSelection() {
+    var input = this[0];
+    
+    if ('selectionStart' in input)
+        return {start: input.selectionStart, end: input.selectionEnd};
+
+    else if (input.createTextRange) {
+        input.focus();
+        var r = document.selection.createRange();
+        var re = input.createTextRange();
+        var rc = re.duplicate();
+        re.moveToBookmark(r.getBookmark());
+        rc.setEndPoint('EndToStart', re);
+        return {start: rc.text.length, end: rc.text.length + r.text.length};
+    }
+    return {start: 0, end: 0};
+};
+$.fn.getSelection = getSelection;
+
+/*
+Need to accomodate the way some browsers handle newlines, setSelection treats \r\n as 1 character, 
+but getSelection treats it as two.
+*/
+function adjustIndex(idx, value) {
+    var rv = idx;
+    for(var i=0;i<idx;i++) {
+        if(value.charAt(i) == "\r") {
+            rv -= 1;
+        }
+    }
+        
+    return rv;
+}
+
+// exposed to global scope for unit testing, and because I need it to adjust the selection for ot
+adjustSelectionIndex = adjustIndex;
+
+function setSelection(start, end) {
+    var input = this[0];
+    
+    if (input.setSelectionRange) {
+        input.focus();
+        input.setSelectionRange(start, end);
+    }
+    else if (input.createTextRange) {
+        var value = input.value;
+        start = adjustIndex(start, value);
+        end = adjustIndex(end, value);
+        var range = input.createTextRange();
+        range.collapse(true);
+        range.moveEnd('character', end);
+        range.moveStart('character', start);
+        range.select();
+    }
+};
+$.fn.setSelection = setSelection;
+
+})(jQuery);
+

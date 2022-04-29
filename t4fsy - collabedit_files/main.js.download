@@ -1,0 +1,174 @@
+// maybe I should move these into closures...
+var input_frame;
+var stolen_focus = false;
+var focused_id = null; // which element currently has focus? Use this to give it back focus anytime editarea steals it
+var chat_cursor = 0;
+var doc_initialized = false;
+var connected = true;
+var leaving = false;
+var version = null;
+
+function monitorStalledOt() {
+    if (!otClient.isStalled()) {
+        setTimeout(monitorStalledOt, 2000);
+        return;
+    }
+
+    var msg = "looks like it's stalled\n";
+    if (otClient.inFlight != null)
+        msg += "inFlight: " + otClient.inFlight.compress().toString() + "\n\n";
+    if (otClient.buffer != null)
+        msg += "buffer: " + otClient.buffer.compress().toString() + "\n\n";
+    if (otClient.bridge != null)
+        msg += "bridge: " + otClient.bridge.compress().toString() + "\n\n";
+    
+    logErrorAndRefresh(msg);
+}
+
+function dbg(str) {
+    var debugging_on = true;
+    if (debugging_on && window.console)
+        console.log(str);
+}
+
+function logError(errStr) {
+    dbg("js error: " + errStr);
+    $.ajax({
+        type: "POST",
+        url: "/ot/error",
+        data: {id: guid, cuid: cuid, "error": errStr}, 
+        success: function() {},
+        error: function() {},
+        dataType: "json"
+        });
+}
+
+function logErrorAndRefresh(errStr) {
+    logError(errStr + "\n\nappState: " + appState.currentState());
+    alert("There was an error, this page is going to refresh now. The error has been logged and we're looking into it.");
+    window.location = window.location;
+}
+
+function genericAjaxErrorHandler(jqXHR, textStatus, errorThrown) {
+    var msg = "generic Ajax Error Handler";
+    if(jqXHR) {
+        for(var i in jqXHR) {
+            msg += "-=-" + i + ": " + jqXHR[i];
+        }
+    }
+    if(textStatus)
+        msg += " textStatus: " + textStatus;
+    if(errorThrown)
+        msg += " errorThrown: " + errorThrown;
+
+    logErrorAndRefresh(msg);
+}
+
+function setupChangeHandlers() {
+    var myinput = function(evt) {
+        if(!connected) return;
+        var newText = editAreaLoader.getValue("the_input").replace(/\r/g, "");
+        
+        if (newText.length > 25000) {
+            alert("Your text is too long for collabedit (the limit is 25000 characters).");
+            document.location = document.location;
+            return;
+        }
+            
+        otClient.handleLocalTextChange(newText);
+    };
+
+    // queue this event to fire in the parent frame so that it will not cause race conditions
+    var queueInput = function(evt) {
+        setTimeout(function () {myinput(evt);}, 0);
+    };
+
+    var elem = input_frame.getElementById("editor");
+
+    if($.browser.safari || $.browser.msie || $.browser.opera) {
+        var tempkd = elem.onkeydown;
+        elem.onkeydown = function(evt) {
+            queueInput(evt);
+            return tempkd(evt);
+        };
+
+        elem.onkeyup = queueInput;
+    }
+    elem.onkeypress = queueInput;
+
+    if($.browser.msie) {
+        elem.onpaste = queueInput;
+        elem.oncut = queueInput;
+    } else {
+        elem.addEventListener("input", queueInput, true);
+    }
+}
+
+function reconnect() {
+    doUpdate(true);
+}
+
+// MISC AJAX posts
+function submit_chat() {
+    var val = $("#chat_value").val();
+    $("#chat_value").val("");
+
+    $.post("/chat_post", {message_text: val, guid: guid});
+    return false;
+}
+
+function update_chat_pref() {
+    var show_hide = "show";
+    if(!sidebar_visible)
+        show_hide = "hide";
+    $.ajax({
+        type: "POST",
+        url: "/update_sidebar_pref",
+        data: {show_hide: show_hide}, 
+        dataType: "json"
+        });
+}
+
+function change_nick(newNickname) {
+    if (newNickname == null) newNickname = "unknown";
+    if(newNickname.length > 25) {
+        newNickname = newNickname.substring(0, 25);
+        alert("25 characters max");
+    }
+    $.post("/change_nick", {new_name: newNickname, guid: guid});
+}
+
+function changeDocName() {
+    var newName = prompt("Document Name", docName);
+    while(newName && newName.length > 50) {
+        alert("Name must be <= 50 characters long.");
+        newName = prompt("Document Name", docName);
+    }
+
+    if (!newName) newName = null;
+    
+    $.ajax({
+        type: "POST",
+        url: "/" + guid + "/ops/change_doc_name",
+        data: {new_name: newName}, 
+        dataType: "json",
+        error: function() {
+            alert("Failed to rename document!");
+            logError("Failed to rename document to: '" + newName + "' for guid: " + guid);
+        }
+    });
+}
+
+function post_lang(lang) {
+    $.ajax({
+        url: '/lang_post', 
+        type:'POST',
+        data: {lang:lang, guid:guid},
+        error: function() {
+            show_connection_error();
+        },
+        success: function() {
+            change_lang(lang);
+        }
+    });
+}

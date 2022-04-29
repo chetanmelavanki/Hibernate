@@ -1,0 +1,148 @@
+.container {
+    width: 100%;
+}
+  
+#editor_container {
+    width: 100%;
+}
+
+#edit_area_text_div {
+    float: left;
+}
+
+#message_div {
+    margin-bottom: 10px;
+    margin-top: 0px;
+}
+
+#alert_bar {
+    background: #acff59;
+    font-size: 2em;
+    margin: 0px;
+    padding: 10px;
+    padding-right: 10px;
+    border: 1px solid black;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    z-index: 100;
+}
+
+#chat_value {
+    width: 236px;
+    font-size: 16px;
+    font-family: georgia, verdana, arial;
+}
+
+#sidebar_div {
+    float: right;
+    width: 240px;
+}
+
+.bluediv {
+    background-color: #E1F2F9;
+    padding: 10px;
+    overflow: auto;
+    border: 1px solid #888888;
+}
+
+.chtmsg {
+    padding-bottom: 7px;
+}
+
+.italicchat {
+    font-style: italic;
+}
+
+.chat_label {
+    font-weight: bold;
+    margin: 3px;
+}
+
+#conn_error {
+    text-align: left;
+    background-color: #ffaa99;
+    margin: 0px;
+    padding: 5px;
+    padding-right: 10px;
+    border: 1px solid #888888;
+}
+
+.arrowlink {
+    color: black;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+#main {
+    padding: 20px;
+}
+
+#editor-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+#docnamediv {
+    font-size: 0.8rem;
+    margin-left: 10px;
+}
+
+#docnamediv .twitter-share-button {
+    margin-left: 10px;
+    position: relative;
+    top: 5px;
+}
+
+#doc_link_bar {
+    display: inline-block;
+    padding: 5px;
+    background-color: #3CA0D0;
+    z-index: 1;
+}
+
+#langSelect {
+    font-size: 16px;
+    font-family: georgia, verdana, arial;
+}
+
+#docnamespan {
+    cursor: pointer;
+}
+
+#footer {
+    text-align: left;
+}
+
+#usage-reason-survey {
+    background-color: #FFE2A3;
+    padding: 10px 30px 0px 30px;
+    height: 76px;
+    position: absolute;
+    top: 0px;
+    right: 250px;
+    font-family: helvetica;
+    text-align: center;
+    z-index: 1;
+}
+
+#usage-reason-survey-top-text {
+    font-size: .8em;
+}
+
+#usage-reason-buttons {
+    margin-top: 10px;
+}
+
+#usage-reason-buttons button {
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+#usage-reason-survey-bottom-text {
+    font-size: .8em;
+    margin-top: 8px;
+    color: #666;
+}

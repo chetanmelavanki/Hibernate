@@ -1,0 +1,20 @@
+var langs = {
+    c: "c",
+    cpp: "c++",
+    cs: "c#",
+    css: "css",
+    basic: "basic",
+    html: "html",
+    java: "java",
+    js: "javascript",
+    lua: "lua",
+    pas: "pascal",
+    perl: "perl",
+    php: "php",
+    python: "python",
+    ruby: "ruby",
+    sql: "sql",
+    vb: "visual basic",
+    xml: "xml",
+    none: "plain text"
+};

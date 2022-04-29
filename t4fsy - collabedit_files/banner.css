@@ -1,0 +1,13 @@
+.banner-img {
+    height: 70px;
+    margin-top: 10px;
+    border-radius: 2px;
+}
+
+.banner {
+    display: none;
+}
+
+.banner.visible {
+    display: block;
+}

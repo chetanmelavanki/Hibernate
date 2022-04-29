@@ -1,0 +1,58 @@
+function show_dialog(msg) {
+    $("body").append(
+    '<div id="dialog_container">' +
+        '<div id="dialog_close_div">' +
+        '<span id="dialog_close">&times;</span>' +
+        '</div>' +
+        '<div id="dialog_msg">' +
+        msg +
+        '</div>' +
+    '</div>');
+
+    $("body").append('<div id="dialog_overlay"></div>');
+
+    $("#dialog_container").css({
+        "width": "400px",
+        "position": "absolute",
+        "top": "50%",
+        "left": "50%",
+        "padding": "10px",
+        "border": "5px solid #3CA0D0",
+        "background-color": "white",
+        "zIndex": 99999,
+        "transform": "translate(-50%, -50%)"
+    });
+
+
+    $("#dialog_overlay").css({
+        "position": 'absolute',
+        "zIndex": 99998,
+        "top": '0px',
+        "left": '0px',
+        "width": '100%',
+        "background": "#000000",
+        "opacity": 0.5,
+        "height": '100%'
+    });
+
+    $("#dialog_close").css({
+        "color": "#3CA0D0",
+        "float": "right",
+        "font-size": "28px",
+        "font-weight": "bold",
+        "cursor": "pointer"
+    });
+
+    $("#dialog_msg").css({
+        "padding": "5px",
+        "padding-left": "20px",
+        "padding-right": "20px",
+        "background-color": "white"
+    });
+
+    $("#dialog_close,#dialog_overlay").click(function () {
+        $("#dialog_container").remove();
+        $("#dialog_overlay").remove();
+        return false;
+    });
+}
