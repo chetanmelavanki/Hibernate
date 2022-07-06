@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <typeInfoHistroy>
-    <typeInfo handle="=clothes-app/src\/main\/java=/optional=/true=/=/maven.pomderived=/true=/&lt;com.xworkz.clothes.dao{ClothesDAO.java[ClothesDAO" modifiers="513" timestamp="1651210767505"/>
+    <typeInfo handle="=clothes-app/src\/main\/java=/optional=/true=/=/maven.pomderived=/true=/&lt;com.xworkz.clothes.dao{ClothesDAO.java[ClothesDAO" modifiers="513" timestamp="1651406609211"/>
+    <typeInfo handle="=Dog-app/C:\/Users\/cheta\/.m2\/repository\/org\/hibernate\/hibernate-core\/5.6.5.Final\/hibernate-core-5.6.5.Final.jar=/maven.pomderived=/true=/=/maven.pomderived=/true=/=/maven.groupId=/org.hibernate=/=/maven.artifactId=/hibernate-core=/=/maven.version=/5.6.5.Final=/=/maven.scope=/compile=/&lt;org.hibernate.id.factory.internal(DefaultIdentifierGeneratorFactory.class[DefaultIdentifierGeneratorFactory" modifiers="33" timestamp="1655387945196"/>
+    <typeInfo handle="=Dog-app/src\/main\/java=/optional=/true=/=/maven.pomderived=/true=/&lt;com.xworkz.dao{DogDao.java[DogDao" modifiers="513" timestamp="1655791995039"/>
+    <typeInfo handle="=Dog-app/C:\/Users\/cheta\/.m2\/repository\/org\/springframework\/spring-orm\/5.3.19\/spring-orm-5.3.19.jar=/maven.pomderived=/true=/=/maven.pomderived=/true=/=/maven.groupId=/org.springframework=/=/maven.artifactId=/spring-orm=/=/maven.version=/5.3.19=/=/maven.scope=/compile=/&lt;org.springframework.orm.hibernate5(LocalSessionFactoryBean.class[LocalSessionFactoryBean" modifiers="33" timestamp="1656658732483"/>
 </typeInfoHistroy>
